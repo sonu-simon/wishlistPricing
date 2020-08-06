@@ -198,8 +198,7 @@ class _MyHomePageState extends State<MyHomePage> {
               } else
                 Fluttertoast.showToast(msg: 'Error! please try again later');
             } else
-              Fluttertoast.showToast(
-                  msg: 'Some error occurred with database !');
+              Fluttertoast.showToast(msg: 'update failed (database) !');
           }
           // print('exit add/updateASIN');
         } else {
@@ -224,7 +223,7 @@ class _MyHomePageState extends State<MyHomePage> {
           } else
             Fluttertoast.showToast(msg: 'Error! please try again later');
         } else
-          Fluttertoast.showToast(msg: 'HTTP did not respond with 200 !');
+          Fluttertoast.showToast(msg: 'update failed (HTTP) !');
       }
     });
   }
