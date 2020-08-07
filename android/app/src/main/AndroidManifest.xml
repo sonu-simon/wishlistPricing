@@ -9,7 +9,7 @@
          FlutterApplication and put your custom class here. -->
     <application
         android:name="io.flutter.app.FlutterApplication"
-        android:label="amazon_sqlite"
+        android:label="amazon_helper 1.2"
         android:icon="@mipmap/ic_launcher">
         <activity
             android:name=".MainActivity"

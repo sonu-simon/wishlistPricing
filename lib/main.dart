@@ -60,23 +60,27 @@ class _MyHomePageState extends State<MyHomePage> {
 
     String amazonASIN = 'not yet initialised';
 
-    //Extract ASIN from the URL.
-    RegExp regASIN = new RegExp("dp/([A-Z0-9]{10})/");
-    amazonASIN = regASIN.stringMatch(url);
-    amazonASIN = amazonASIN.substring(3, 13);
-    print(amazonASIN);
-
-    var asinList = await helper.getAsinList();
-    // print('asinList : $asinList');
-
-    if (asinList.contains(amazonASIN)) {
-      // TODO - implement ASIN already exists.
-      Fluttertoast.showToast(
-          msg: 'Looks like this product already exist here !');
-
-      print('Abort insert. ASIN already exists');
+    if (!url.contains('amazon.in')) {
+      showSnackBarMsg('Invalid link shared!');
     } else {
-      processProduct(amazonASIN, helper, 'insertASIN', '5');
+      //Extract ASIN from the URL.
+      RegExp regASIN = new RegExp("dp/([A-Z0-9]{10})/");
+      amazonASIN = regASIN.stringMatch(url);
+      amazonASIN = amazonASIN.substring(3, 13);
+      print(amazonASIN);
+
+      var asinList = await helper.getAsinList();
+      // print('asinList : $asinList');
+
+      if (asinList.contains(amazonASIN)) {
+        // Fluttertoast.showToast(
+        //     msg: 'Looks like this product already exist here !');
+        showSnackBarMsg('This product already exits here');
+
+        print('Abort insert. ASIN already exists');
+      } else {
+        processProduct(amazonASIN, helper, 'insertASIN', '5');
+      }
     }
   }
 
@@ -107,25 +111,37 @@ class _MyHomePageState extends State<MyHomePage> {
       //If the http request is successful the statusCode will be 200
       if (response.statusCode == 200) {
         responseBody = response.body;
+
+        //Check if the response is not a Captcha page.
         if (responseBody.indexOf('data-asin-price') != -1) {
           int indexOfPrice = 0;
           int indexOfTitle = 0;
+          String currentlyUnavailable =
+              '<span class=\"a-size-medium a-color-price\">\n\n\nCurrently unavailable.\n\n\n\n\n\n\n\n\n\n</span>';
 
-          //Extract price of the product from the response from Amazon
-          indexOfPrice = responseBody.indexOf('data-asin-price') + 17;
-          // print(indexOfPrice);
-          String asinPriceTemp =
-              responseBody.substring(indexOfPrice, indexOfPrice + 10);
-          amazonPrice = asinPriceTemp.substring(0, asinPriceTemp.indexOf("\""));
+          //Check if the ASIN is available to buy
+          if (responseBody.contains(currentlyUnavailable)) {
+            amazonPrice = 'Currently unavailable';
+          } else {
+            //Extract price of the product from the response from Amazon
+            indexOfPrice = responseBody.indexOf('data-asin-price') + 17;
+            // print(indexOfPrice);
+            String asinPriceTemp =
+                responseBody.substring(indexOfPrice, indexOfPrice + 10);
+            amazonPrice =
+                asinPriceTemp.substring(0, asinPriceTemp.indexOf("\""));
+          }
+
           print('amazonPrice: $amazonPrice');
 
           //Extract name of the product from the response from Amazon
           indexOfTitle =
-              responseBody.indexOf('a-size-large product-title-word-brea') + 47;
+              responseBody.indexOf('a-size-large product-title-word-break') +
+                  47;
           String asinTitleTemp =
-              responseBody.substring(indexOfTitle, indexOfTitle + 150);
+              responseBody.substring(indexOfTitle, indexOfTitle + 250);
           amazonName = asinTitleTemp.substring(0, asinTitleTemp.indexOf("\n"));
-          // print('processing: $amazonName');
+          print('processing: $amazonName');
 
           // print(product);
           // addProduct(product, helper, type);
@@ -167,28 +183,19 @@ class _MyHomePageState extends State<MyHomePage> {
 
             result = helper.updateProduct(product);
             rebuildList();
-            Fluttertoast.showToast(
-                msg: 'Successfully updated products !',
-                toastLength: Toast.LENGTH_SHORT);
+            // Fluttertoast.showToast(
+            //     msg: 'Successfully updated products !',
+            //     toastLength: Toast.LENGTH_SHORT);
           }
 
           if (result != 0) {
-            // TODO - implement insert SUCCESS
             print('insert/update SUCCESS');
             // Fluttertoast.showToast(msg: 'Successfully updated products !');
             setState(() {
               _isLoading = false;
             });
-            _scaffoldKey.currentState.showSnackBar(SnackBar(
-              content: Text(
-                'Successfully updated !',
-                style: TextStyle(color: Colors.white),
-              ),
-              backgroundColor: Theme.of(context).backgroundColor,
-              duration: Duration(seconds: 3),
-            ));
+            showSnackBarMsg('Successfully updated!');
           } else {
-            //TODO - implement insert FAIL
             print('insert/update FAIL');
             if (type == 'insertASIN') {
               int tryCount = int.parse(priceHistoryFromDB);
@@ -228,7 +235,18 @@ class _MyHomePageState extends State<MyHomePage> {
     });
   }
 
-  deleteProduct(String asin, DatabaseHelper helper) async {
+  void showSnackBarMsg(String message) {
+    _scaffoldKey.currentState.showSnackBar(SnackBar(
+      content: Text(
+        message,
+        style: TextStyle(color: Colors.white),
+      ),
+      backgroundColor: Theme.of(context).backgroundColor,
+      duration: Duration(seconds: 3),
+    ));
+  }
+
+  deleteProduct(String asin, DatabaseHelper helper, int index) async {
     print('==============================');
     print('deleteASINdb');
     print('==============================');
@@ -236,13 +254,15 @@ class _MyHomePageState extends State<MyHomePage> {
     var result;
     result = helper.deleteProduct(asin);
     if (result != 0) {
-      // TODO - implement delete SUCCESS
       print('delete SUCCESS');
-      Fluttertoast.showToast(msg: 'Successfully deleted product !');
+      showSnackBarMsg('Successfully removed!');
+      productList.removeAt(index);
+      rebuildList();
+      // Fluttertoast.showToast(msg: 'Successfully deleted product !');
     } else {
-      //TODO - implement delete FAIL
       print('delete FAIL');
-      Fluttertoast.showToast(msg: 'Error deleting this product !');
+      showSnackBarMsg('Error deleting!');
+      // Fluttertoast.showToast(msg: 'Error deleting this product !');
     }
   }
 
@@ -284,22 +304,26 @@ class _MyHomePageState extends State<MyHomePage> {
 
   getTrailingWidget(String price, String history) {
     print('history : $history - price : $price');
-    double doublePrice = double.parse(price);
-    double doubleHistory = double.parse(history);
 
-    double difference = doublePrice - doubleHistory;
-    if (difference < 0) {
-      return Text(
-        '₹ ${difference.toString()}',
-        style: TextStyle(
-            color: Colors.green, fontSize: 18, fontWeight: FontWeight.bold),
-      );
-    } else if (difference > 0) {
-      return Text(
-        '₹ ${difference.toString()}',
-        style: TextStyle(
-            color: Colors.red, fontSize: 18, fontWeight: FontWeight.bold),
-      );
+    if (price != 'Currently unavailable' &&
+        history != 'Currently unavailable') {
+      double doublePrice = double.parse(price);
+      double doubleHistory = double.parse(history);
+
+      double difference = doublePrice - doubleHistory;
+      if (difference < 0) {
+        return Text(
+          '₹ ${difference.toString()}',
+          style: TextStyle(
+              color: Colors.green, fontSize: 18, fontWeight: FontWeight.bold),
+        );
+      } else if (difference > 0) {
+        return Text(
+          '₹ ${difference.toString()}',
+          style: TextStyle(
+              color: Colors.red, fontSize: 18, fontWeight: FontWeight.bold),
+        );
+      }
     }
   }
 
@@ -361,10 +385,14 @@ class _MyHomePageState extends State<MyHomePage> {
                           text: TextSpan(children: <TextSpan>[
                             TextSpan(
                               text: '₹ ${productList[index].productPrice}',
-                              style: TextStyle(
-                                fontSize: 20,
-                                fontWeight: FontWeight.bold,
-                              ),
+                              style: (productList[index].productPrice ==
+                                      'Currently unavailable')
+                                  ? TextStyle(
+                                      fontSize: 16, fontWeight: FontWeight.bold)
+                                  : TextStyle(
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.bold,
+                                    ),
                             ),
                             TextSpan(
                               text: '   ${productList[index].lastUpdated}',
@@ -390,13 +418,8 @@ class _MyHomePageState extends State<MyHomePage> {
                           launch(productList[index].productUrl);
                         },
                         onLongPress: () {
-                          helper
-                              .deleteProduct(productList[index].getProductASIN)
-                              .then((value) {
-                            print('deleted');
-                            productList.removeAt(index);
-                            rebuildList();
-                          });
+                          deleteProduct(
+                              productList[index].productASIN, helper, index);
                         },
                       ),
                     );
