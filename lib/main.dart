@@ -395,7 +395,7 @@ class _MyHomePageState extends State<MyHomePage> {
                                     ),
                             ),
                             TextSpan(
-                              text: '   ${productList[index].lastUpdated}',
+                              text: '  ${productList[index].lastUpdated}',
                               style: TextStyle(
                                 fontSize: 12,
                                 fontWeight: FontWeight.w300,
